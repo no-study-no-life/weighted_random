@@ -1,0 +1,36 @@
+[project]
+name = "weighted_random"
+description = "A module for fast and explicit random with weight."
+
+readme = "README.md"
+license = "MIT"
+
+# Classifiers for your package. PyPI displays these on its page.
+# See https://pypi.org/classifiers/ for all of the possibilities.
+classifiers = [
+	"Development Status :: 2 - Pre-Alpha",
+	"Programming Languague :: Python",
+	"Programming Languague :: Python :: 3",
+	"Programming Languague :: Python :: 3.9",
+	"Programming Languague :: Python :: 3.10",
+	"Programming Languague :: Python :: 3.11",
+	"Programming Languague :: Python :: 3.12",
+	"Programming Languague :: Python :: 3.13",
+	"Programming Languague :: Python :: 3.14",
+]
+
+requires-python = ">= 3.9"
+
+# State that the version will be defined dynamically below.
+dynamic = ["version"]
+
+[project.urls]
+"Source code" = "https://github.com/no-study-no-life/weighted_random"
+"Issue tracker" = "https://github.com/no-study-no-life/weighted_random/issues"
+
+[tool.setuptools.dynamic]
+version.attr = "weighted_random.__version__"
+
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
