@@ -1,3 +1,4 @@
+from .binary_index_tree import BinaryIndexTree
 from .utils import random_int
 from .weighted_random import (
 	WeightedRandom, 
@@ -6,6 +7,6 @@ from .weighted_random import (
 	WeightedWheelBulk,
 )
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 

@@ -58,10 +58,42 @@ class TestWeightedRandom(unittest.TestCase):
 	def test_big_weight(self):
 		# 测试相差大的权重
 		weight = [0, 1, 10, 100, 1000, 10000]
-		times = 5000000
+		times = 10000000
 		percent = 0.05
 		m = WeightedRandom(weight)
 		self.assertTrue(simula(m, weight, times, percent))
+
+	def test_simple_pick(self):
+		# 测试简易无重复选择.
+		weight = [0, 1, 1, 0, 1, 0]
+		m = WeightedRandom(weight, pick=True)
+		times = 10000
+		percent = 0.05
+		# pick all
+		total = sum(weight)
+		count = 3
+		cnt = [0] * len(weight)
+		for _ in range(times):
+			idxs = m.pick(count)
+			for idx in idxs:
+				self.assertTrue(weight[idx] > 0)
+				cnt[idx] += 1
+		for (curr, actual) in zip(cnt, weight):
+			curr /= times
+			self.assertTrue(abs(curr - actual) < percent)
+
+		# pick 2
+		count = 2
+		cnt = [0] * len(weight)
+		for _ in range(times):
+			idxs = m.pick(count)
+			for idx in idxs:
+				self.assertTrue(weight[idx] > 0)
+				cnt[idx] += 1
+		for (curr, actual) in zip(cnt, weight):
+			curr /= times
+			actual *= count / total
+			self.assertTrue(abs(curr - actual) < percent)
 
 	pass
 
