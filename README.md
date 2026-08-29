@@ -20,7 +20,7 @@
 初始化时间复杂度 $\mathcal{O}(n \cdot \log n)$ , 空间复杂度 $\mathcal{O}(n)$ .
 
 获取一个随机数的时间复杂度不变, 为 $\mathcal{O}(1)$ .
-获取 `k` 个无重复位置的时间复杂度为 $\mathcal{O}(n + k \cdot \log n)$ .
+获取 `k` 个无重复位置的时间复杂度为 $\mathcal{O}(n + k \cdot \log^2 n)$ .
 
 ## Examples
 
