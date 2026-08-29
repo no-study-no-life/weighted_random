@@ -1,8 +1,14 @@
 # WeightedRandom · 带权重的随机数生成工具
 
+[![Tests](https://github.com/no-study-no-life/weighted_random/actions/workflows/test.yml/badge.svg)](https://github.com/no-study-no-life/weighted_random/actions/workflows/test.yml)
+
+[![Python Version](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://www.python.org/)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 一个简易的 Python 随机数生成库, 用于根据指定非负整数权重, 选择对应位置的元素. 
 
-内部使用整数实现, 避免浮点数误差. 
+内部 **完全使用整数** 实现, 避免浮点数误差. 
 
 目前支持: 
 - 单次带权取样. 
@@ -74,6 +80,3 @@ result = m.pick(2)
 # result是一个列表, 可能包含 "orange"/"yellow"/"green" 的任意两个
 # 出现概率为对应权重.
 ```
-
-## 许可证
-本项目基于 [MIT](LICENSE) 许可证发布. 
