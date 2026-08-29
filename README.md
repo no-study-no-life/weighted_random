@@ -1,12 +1,10 @@
 # WeightedRandom · 带权重的随机数生成工具
 
 [![Tests](https://github.com/no-study-no-life/weighted_random/actions/workflows/test.yml/badge.svg)](https://github.com/no-study-no-life/weighted_random/actions/workflows/test.yml)
-
 [![Python Version](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://www.python.org/)
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-一个简易的 Python 随机数生成库, 用于根据指定非负整数权重, 选择对应位置的元素. 
+一个简易的 Python 随机库: 根据给定的非负整数权重, 随机选择对应位置的元素. 
 
 内部 **完全使用整数** 实现, 避免浮点数误差. 
 
