@@ -36,9 +36,19 @@ class WeightedRandom:
 		else:
 			self.bit = None
 
+	def _get_index(self) -> int:
+		""" 依据权重随机获取一个位置. 
+
+		Note:
+			内部使用. 与 `get` 分开是为了避免子类重写 `get` 后, 父类内部调用
+			到子类版本(子类 `get` 返回的是值, 不是位置). 
+
+		"""
+		return random_by_table(self.avg, self.probs, self.alias)
+
 	def get(self) -> int:
 		""" 依据权重随机获取一个位置 """
-		return random_by_table(self.avg, self.probs, self.alias)
+		return self._get_index()
 
 	def pick(self, count: int) -> list[int]:
 		""" 依据权重, 选择 `count` 个位置.
@@ -58,7 +68,8 @@ class WeightedRandom:
 			raise ValueError(f"if you want to use `pick`, set `pick` = True when init {self.__class__.__name__}.")
 
 		if count == 1:
-			return [self.get()]
+			# 单次取样直接返回, 避免树状数组的 O(n) 复制;
+			return [self._get_index()]
 
 		return self.bit.pick(count)
 
@@ -85,10 +96,19 @@ class WeightedRandomBulk:
 		else:
 			self.bits = None
 
-	def get(self, index: int = 0) -> int:
-		""" 根据指定的权重选项, 返回随机选择的位置 """
+	def _get_index(self, index: int = 0) -> int:
+		""" 根据指定的权重选项, 返回随机选择的位置. 
+
+		Note:
+			内部使用. 与 `get` 分开的原因同 `WeightedRandom`. 
+
+		"""
 		avg, probs, alias = self.info[index]
 		return random_by_table(avg, probs, alias)
+
+	def get(self, index: int = 0) -> int:
+		""" 根据指定的权重选项, 返回随机选择的位置 """
+		return self._get_index(index)
 
 	def pick(self, count: int, index: int = 0) -> list[int]:
 		""" 
@@ -99,7 +119,8 @@ class WeightedRandomBulk:
 			raise ValueError(f"if you want to use `pick`, set `pick` = True when init {self.__class__.__name__}.")
 
 		if count == 1:
-			return [self.get(index)]
+			# 单次取样直接返回, 避免树状数组的 O(n) 复制;
+			return [self._get_index(index)]
 
 		return self.bits[index].pick(count)
 

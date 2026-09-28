@@ -1,0 +1,25 @@
+# Python 编译缓存;
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 构建/分发;
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# 测试/覆盖率;
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 虚拟环境;
+.venv/
+venv/
+env/
+
+# 编辑器/系统;
+.idea/
+.vscode/
+.DS_Store

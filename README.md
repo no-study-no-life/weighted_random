@@ -11,6 +11,7 @@
 目前支持: 
 - 单次带权取样. 
 - 无重复多次带权取样.
+- 嵌套权重的一次性展开取样(如: 先选星级, 再选 UP/非UP, 最后选角色).
 
 ## 时空复杂度
 
@@ -78,3 +79,51 @@ result = m.pick(2)
 # result是一个列表, 可能包含 "orange"/"yellow"/"green" 的任意两个
 # 出现概率为对应权重.
 ```
+
+#### 嵌套权重一次性抽取
+```python
+from weighted_random import WeightedWheelTree
+
+# 先按星级选, 再按 UP/非UP 选, 最后按角色权重选;
+# 每一项是 (key, 当前层级权重, 子节点列表), 没有子节点则为叶子(即最终结果).
+config = [
+	("SSR", 1, [
+		("UP",   7, [("角色A", 1), ("角色B", 1)]),
+		("非UP", 3, [("角色A", 1), ("角色C", 3), ("角色D", 6)]),
+	]),
+	("SR", 9, [("角色E", 1), ("角色F", 1)]),
+]
+
+m = WeightedWheelTree(config)
+result = m.get()      # 一次取样即可得到最终角色;
+key, path = m.draw()  # 同时拿到层级路径(如 ("SSR", "UP", "角色A")), 可判断是否歪了;
+
+print(m.total)   # 总权重;
+print(m.merged)  # 相同 key 的权重相加, 如 {"角色A": 38, ...}
+```
+
+也可以只生成扁平的 `key` 列表与总权重列表, 自行取样:
+```python
+import bisect
+from weighted_random import flatten, random_int
+
+keys, weights = flatten(config)
+# 同一个 key 出现在多个分支时会重复出现, 权重各自独立;
+# 上例中 keys    = ["角色A", "角色B", "角色A", "角色C", "角色D", "角色E", "角色F"]
+#       weights = [35, 35, 3, 9, 18, 450, 450], 总权重 1000;
+# 注意 SR 分支被通分放大: 450/1000 = (9/10) * (1/2), 正是它真实的概率.
+
+prefix = []
+total = 0
+for weight in weights:
+	total += weight
+	prefix.append(total)
+
+r = random_int(total)
+result = keys[bisect.bisect_right(prefix, r)]
+```
+
+配置项同样接受 `dict` 形式: `{"key": "SSR", "weight": 1, "children": [...]}`. 
+
+> **注意**: 嵌套权重**不能**把各层权重直接相乘. 不同分支的本层总权重不同, 
+> 分母并不统一, 必须逐层通分. 本库内部使用整数通分, 与"逐层多次取样"完全等价.

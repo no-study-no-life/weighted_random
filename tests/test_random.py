@@ -1,6 +1,7 @@
 import unittest
 from weighted_random import random_int
 from weighted_random import WeightedRandom 
+from weighted_random import WeightedWheel, WeightedWheelBulk
 
 
 def simula(m, ref: list[int], times: int = 10000, percent: float = 0.05):
@@ -94,6 +95,32 @@ class TestWeightedRandom(unittest.TestCase):
 			curr /= times
 			actual *= count / total
 			self.assertTrue(abs(curr - actual) < percent)
+
+	def test_pick_one(self):
+		# pick(1) 必须等价于 get(), 不能因为父类内部调用 self.get() 
+		# 而取到子类重写后的"值"(子类 get 返回的是 wheel 里的值, 不是位置).
+		weight = [1, 0, 0, 3]
+		m = WeightedRandom(weight, pick=True)
+		for _ in range(100):
+			idxs = m.pick(1)
+			self.assertEqual(len(idxs), 1)
+			self.assertTrue(weight[idxs[0]] > 0)
+
+		# 值恰好也是合法下标时, 旧实现会静默返回错误的值;
+		m = WeightedWheel([1, 0, 0], [1, 0, 0], pick=True)
+		for _ in range(100):
+			self.assertEqual(m.pick(1), [1])
+
+		# 字符串轮盘在旧实现下会直接抛 TypeError;
+		m = WeightedWheel(["a", "b"], [0, 1], pick=True)
+		for _ in range(100):
+			self.assertEqual(m.pick(1), ["b"])  # 0 权重不会被选中;
+
+		# Bulk 版本同理;
+		m = WeightedWheelBulk(["a", "b"], [[0, 1]], pick=True)
+		for _ in range(100):
+			self.assertEqual(m.pick(1), ["b"])
+			self.assertEqual(m.pick(1, 0), ["b"])
 
 	pass
 
