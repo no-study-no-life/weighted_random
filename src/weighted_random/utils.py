@@ -1,9 +1,11 @@
 import math
 import random
+from typing import Any
 
 __all__ = [
 	"create_table",
 	"random_int",
+	"random_pick",
 	"random_by_table",
 ]
 
@@ -69,9 +71,9 @@ def create_table(weight: list[int]) -> tuple[int, list[int], list[int]]:
 
 def random_int(to: int) -> int:
 	""" 快速获取位于 [0, to) 的随机整数.
-	
+
 	Note:
-		需要 ``to`` > 0. 否则会出现无限循环;  
+		需要 ``to`` > 0 . 否则会出现无限循环;  
 
 	Args:
 		to (int): 产生随机数的上界, 不包含在内.
@@ -94,7 +96,7 @@ def random_int(to: int) -> int:
 
 def random_by_table(avg: int, probs: list[int], alias: list[int]) -> int:
 	""" 依据权重随机获取一个位置.
-	
+
 	Note:
 		参数需要为 `create_table` 返回的结果.
 
@@ -115,3 +117,42 @@ def random_by_table(avg: int, probs: list[int], alias: list[int]) -> int:
 	if r >= probs[pos]:
 		pos = alias[pos]
 	return pos
+
+
+def random_pick(arr: list[Any], n: int) -> list[Any]:
+	""" 简易获取n个不同的下标对应的元素. 尽可能少使用 `random` .
+
+	Note:
+		最多输出 min(n, len(arr)) 个元素.
+		内部使用整数数组存储下标, 
+	
+	Args:
+		arr (list): 待选择的元素列表;
+		n (int): 需要选择的个数
+	
+	Returns:
+		list: 实际选择的元素列表
+
+	"""
+	m = len(arr)
+	n = min(n, m)
+	if n == m:
+		# 快速路径: 全部取出, 直接打乱: min(n, m) 次 random.
+		result = arr[:]
+		random.shuffle(result)
+		return result
+
+	swap = {}   # 改动过的位置;
+	# Floyed 抽样;
+	result = [None] * n
+	right = m
+	for i in range(n):
+		idx = random_int(right)
+		right -= 1
+		tgt = swap.get(idx, idx)  # 实际位置;
+		tail = swap.get(right, right)  # 尾部备用位置;
+		swap[idx] = tail  # 写回实际交换后位置;
+		result[i] = arr[tgt]
+	
+	return result
+

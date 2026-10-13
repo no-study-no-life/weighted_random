@@ -4,7 +4,7 @@ from .tree import (
 	WeightedWheelTree,
 	flatten,
 )
-from .utils import random_int
+from .utils import random_int, random_pick
 from .weighted_random import (
 	WeightedRandom, 
 	WeightedRandomBulk,
@@ -12,6 +12,6 @@ from .weighted_random import (
 	WeightedWheelBulk,
 )
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
 

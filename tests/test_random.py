@@ -1,5 +1,5 @@
 import unittest
-from weighted_random import random_int
+from weighted_random import random_int, random_pick
 from weighted_random import WeightedRandom 
 from weighted_random import WeightedWheel, WeightedWheelBulk
 
@@ -38,7 +38,27 @@ class TestWeightedRandom(unittest.TestCase):
 		x = 100
 		for _ in range(100):
 			self.assertTrue(0 <= random_int(x) < x)
-		
+
+
+	def test_random_pick(self):
+		# 测试均匀随机取样;
+		arr = list(range(10))
+		times = 100000
+		tgt = 5
+		cnt = [0] * 10
+		for _ in range(times):
+			res = random_pick(arr, tgt)
+			# 需要保证不重复;
+			self.assertEqual(len(res), len(set(res)))
+			# 计数出现次数;
+			for v in res:
+				cnt[v] += 1
+		# 计算概率;
+		prob = tgt / 10
+		percent = 0.05
+		for x in cnt:
+			actual = x / times
+			self.assertLessEqual(abs(actual / prob - 1), percent)
 
 	def test_same_weight(self):
 		# 测试相同的权重;
@@ -59,7 +79,8 @@ class TestWeightedRandom(unittest.TestCase):
 	def test_big_weight(self):
 		# 测试相差大的权重
 		weight = [0, 1, 10, 100, 1000, 10000]
-		times = 10000000
+		# 运行次数需要增大, 否则误差过于明显;
+		times = 20000000
 		percent = 0.05
 		m = WeightedRandom(weight)
 		self.assertTrue(simula(m, weight, times, percent))
