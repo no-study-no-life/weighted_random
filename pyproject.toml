@@ -8,15 +8,15 @@ license = "MIT"
 # Classifiers for your package. PyPI displays these on its page.
 # See https://pypi.org/classifiers/ for all of the possibilities.
 classifiers = [
-	"Development Status :: 2 - Pre-Alpha",
-	"Programming Languague :: Python",
-	"Programming Languague :: Python :: 3",
-	"Programming Languague :: Python :: 3.9",
-	"Programming Languague :: Python :: 3.10",
-	"Programming Languague :: Python :: 3.11",
-	"Programming Languague :: Python :: 3.12",
-	"Programming Languague :: Python :: 3.13",
-	"Programming Languague :: Python :: 3.14",
+	"Development Status :: 4 - Beta",
+	"Programming Language :: Python",
+	"Programming Language :: Python :: 3",
+	"Programming Language :: Python :: 3.9",
+	"Programming Language :: Python :: 3.10",
+	"Programming Language :: Python :: 3.11",
+	"Programming Language :: Python :: 3.12",
+	"Programming Language :: Python :: 3.13",
+	"Programming Language :: Python :: 3.14",
 ]
 
 requires-python = ">= 3.9"
