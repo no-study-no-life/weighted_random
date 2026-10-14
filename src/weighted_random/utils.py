@@ -143,7 +143,6 @@ def random_pick(arr: list[Any], n: int) -> list[Any]:
 		return result
 
 	swap = {}   # 改动过的位置;
-	# Floyed 抽样;
 	result = [None] * n
 	right = m
 	for i in range(n):

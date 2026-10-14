@@ -1,3 +1,4 @@
+import warnings
 from collections.abc import Hashable
 from math import gcd
 from typing import Any, NamedTuple, Optional
@@ -79,6 +80,8 @@ def _build_group(group, prefix: tuple) -> tuple[list[tuple], int]:
 			raise TypeError(f"weight must be int, got {type(weight).__name__} at {_path_text(path)}")
 		if weight < 0:
 			raise ValueError(f"negative weight at {_path_text(path)}")
+		if weight == 0:
+			continue
 		weight_sum += weight
 
 		if node.children:
@@ -90,7 +93,9 @@ def _build_group(group, prefix: tuple) -> tuple[list[tuple], int]:
 	if weight_sum <= 0:
 		raise ValueError(f"sum of weights must be positive at {_path_text(prefix)}")
 
-	# 逐层通分: 乘以各组总权重的最小公倍数, 保证不同分支的分母统一;
+	# 各子树返回的是"组内相对权重", 分母为各自的 subtotal;
+	# 取这些 subtotal 的最小公倍数作为公共分母 common(用 lcm 而非乘积, 抑制权重膨胀),
+	# 每个子树再乘 common // subtotal 折算到同一分母, 之后才能乘上本层权重合并;
 	common = 1
 	for _weight, _entries, subtotal in parts:
 		common = common // gcd(common, subtotal) * subtotal
@@ -98,8 +103,7 @@ def _build_group(group, prefix: tuple) -> tuple[list[tuple], int]:
 	out = []
 	for weight, entries, subtotal in parts:
 		factor = weight * (common // subtotal)
-		if factor:  # 0 权重的分支整棵剪掉;
-			out.extend((key, path, value * factor) for key, path, value in entries)
+		out.extend((key, path, value * factor) for key, path, value in entries)
 
 	# 整体约分, 抑制权重膨胀;
 	divisor = 0
@@ -142,15 +146,31 @@ def flatten(config) -> tuple[list, list[int]]:
 	return [key for key, _path, _weight in entries], [weight for _key, _path, weight in entries]
 
 
-def _merge(entries: list[tuple]) -> Optional[dict]:
-	""" 把相同 key 的权重相加. key 不可哈希时返回 None. """
-	merged = {}
+def _check_duplicate(entries: list[tuple]):
+	""" 校验所有叶子 key 全局唯一. 
+
+	Note:
+		key 不可哈希时无法校验, 给出 UserWarning 后放行. 
+
+	Raises:
+		ValueError: 存在重复的 key, 信息中列出该 key 及它出现的所有路径. 
+
+	"""
+	seen = {}
 	try:
-		for key, _path, weight in entries:
-			merged[key] = merged.get(key, 0) + weight
-	except TypeError:  # key 不可哈希;
-		return None
-	return merged
+		for key, path, _weight in entries:
+			seen.setdefault(key, []).append(path)
+	except TypeError:  # key 不可哈希, 无法校验;
+		warnings.warn("keys are not hashable, duplicate keys cannot be checked", stacklevel=3)
+		return
+
+	duplicates = [(key, paths) for key, paths in seen.items() if len(paths) > 1]
+	if duplicates:
+		detail = "; ".join(
+			f"{key!r} at {', '.join(_path_text(path) for path in paths)}"
+			for key, paths in duplicates
+		)
+		raise ValueError(f"duplicate keys found: {detail}")
 
 
 class WeightedWheelTree(WeightedWheel):
@@ -161,59 +181,42 @@ class WeightedWheelTree(WeightedWheel):
 		展开过程全程使用整数, 与逐层多次取样完全等价; 之后每次 `get` 的
 		时间复杂度仍为 O(1). 
 
-		同一个 key 出现在多个分支时, 默认保留多份(此时可用 `paths` 判断命中了
-		哪个分支); 设置 ``merge = True`` 可将相同 key 的权重相加, 此时 `paths`
-		为 ``None``. 无重复取样 `pick` 建议配合 ``merge = True``, 否则可能返回
-		重复的 key. 
+		默认要求所有叶子 key 全局唯一, 出现重复 key 时抛出 ValueError;
+		若同一个 key 确实需要在多个分支出现, 设置 ``allow_duplicate = True``
+		保留每个分支一份(此时 `pick` 可能返回重复的 key). 
+		key 不可哈希时无法校验唯一性, 会给出 UserWarning. 
 
 	Args:
 		config (list): 嵌套配置, 元素接受 `Node`/`dict`/`tuple`. 
 		pick (bool): 是否需要支持无重复取样. 默认为 `False`. 
-		merge (bool): 是否合并相同 key 的权重. 默认为 `False`. 
+		allow_duplicate (bool): 是否允许出现重复的 key. 默认为 `False`. 
 
 	Attributes:
-		keys (list): 参与取样的 key 列表(扁平, 或合并后的).
+		keys (list): 参与取样的 key 列表.
 		weights (list[int]): 与 `keys` 一一对应的绝对权重列表.
-		paths (Optional[list[tuple]]): 与 `keys` 一一对应的层级路径; 合并时为 ``None``. 
+		paths (list[tuple]): 与 `keys` 一一对应的层级路径. 
 		total (int): 总权重. 
-		merged (Optional[dict]): 相同 key 权重相加的结果; key 不可哈希时为 ``None``. 
 
 	"""
 
-	__slots__ = ("keys", "weights", "paths", "total", "merged")
+	__slots__ = ("keys", "weights", "paths", "total")
 
-	def __init__(self, config, pick: bool = False, merge: bool = False):
+	def __init__(self, config, pick: bool = False, allow_duplicate: bool = False):
 		entries, total = _flatten(config)
-		merged = _merge(entries)
+		if not allow_duplicate:
+			_check_duplicate(entries)
 
-		if merge:
-			if merged is None:
-				raise TypeError("merge = True requires hashable keys")
-			keys = list(merged)
-			weights = list(merged.values())
-			paths = None
-		else:
-			keys = [key for key, _path, _weight in entries]
-			weights = [weight for _key, _path, weight in entries]
-			paths = [path for _key, path, _weight in entries]
-
+		keys, paths, weights = map(list, zip(*entries))
 		self.keys = keys
 		self.weights = weights
 		self.paths = paths
 		self.total = total
-		self.merged = merged
 		super().__init__(keys, weights, pick)
 
-	def draw(self) -> tuple[Any, Optional[tuple]]:
-		""" 随机获取一个 key, 同时返回其层级路径(例如 ``("SSR", "UP", "角色A")``). 
-
-		Note:
-			当 ``merge = True`` 时没有路径信息, 返回的路径为 ``None``. 
-
-		"""
+	def draw(self) -> tuple[Any, tuple]:
+		""" 随机获取一个 key, 同时返回其层级路径(例如 ``("SSR", "UP", "角色A")``). """
 		index = self._get_index()
-		path = None if self.paths is None else self.paths[index]
-		return self.wheel[index], path
+		return self.wheel[index], self.paths[index]
 
 	def __repr__(self) -> str:
 		title = f"{self.__class__.__name__}:"

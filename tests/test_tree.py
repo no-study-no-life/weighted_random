@@ -19,6 +19,21 @@ UP_CONFIG = [
 	]),
 ]
 
+# 与 UP_CONFIG 同构, 但所有 key 全局唯一(默认模式要求);
+UNIQUE_CONFIG = [
+	("SSR", 1, [
+		("UP", 7, [
+			("角色A", 1, None),
+			("角色B", 1, None),
+		]),
+		("非UP", 3, [
+			("角色C", 1, None),
+			("角色D", 3, None),
+			("角色E", 6, None),
+		]),
+	]),
+]
+
 
 def exact_probs(nodes: list) -> dict:
 	""" 参考实现: 用 Fraction 逐层计算每个 key 的真实概率. """
@@ -170,44 +185,49 @@ class TestFlatten(unittest.TestCase):
 class TestWeightedWheelTree(unittest.TestCase):
 
 	def test_attributes(self):
-		m = WeightedWheelTree(UP_CONFIG)
-		self.assertEqual(m.keys, ["角色A", "角色B", "角色A", "角色C", "角色D"])
+		m = WeightedWheelTree(UNIQUE_CONFIG)
+		self.assertEqual(m.keys, ["角色A", "角色B", "角色C", "角色D", "角色E"])
 		self.assertEqual(m.weights, [35, 35, 3, 9, 18])
 		self.assertEqual(m.total, 100)
-		self.assertEqual(m.merged["角色A"], 38)
-		self.assertEqual(sum(m.merged.values()), 100)
 		self.assertEqual(m.paths[0], ("SSR", "UP", "角色A"))
-		self.assertEqual(m.paths[2], ("SSR", "非UP", "角色A"))
+		self.assertEqual(m.paths[2], ("SSR", "非UP", "角色C"))
 
 	def test_draw(self):
-		# 同 key 的不同分支要能区分出来;
-		m = WeightedWheelTree(UP_CONFIG)
+		# draw 同时返回命中的层级路径;
+		m = WeightedWheelTree(UNIQUE_CONFIG)
 		random.seed(1)
 		for _ in range(200):
 			key, path = m.draw()
 			self.assertEqual(path[-1], key)
 			self.assertIn(path, [("SSR", "UP", "角色A"), ("SSR", "UP", "角色B"),
-			                     ("SSR", "非UP", "角色A"), ("SSR", "非UP", "角色C"),
-			                     ("SSR", "非UP", "角色D")])
+			                     ("SSR", "非UP", "角色C"), ("SSR", "非UP", "角色D"),
+			                     ("SSR", "非UP", "角色E")])
 
-	def test_merge(self):
-		m = WeightedWheelTree(UP_CONFIG, merge=True)
-		self.assertEqual(m.keys, ["角色A", "角色B", "角色C", "角色D"])
-		self.assertEqual(m.weights, [38, 35, 9, 18])
+	def test_duplicate_key_raises(self):
+		# 默认不允许出现相同的 key;
+		with self.assertRaises(ValueError) as ctx:
+			WeightedWheelTree(UP_CONFIG)
+		self.assertIn("角色A", str(ctx.exception))
+		self.assertIn("SSR/UP/角色A", str(ctx.exception))
+		self.assertIn("SSR/非UP/角色A", str(ctx.exception))
+
+		# 允许重复时每个分支各保留一份, 且 paths 依然可用;
+		m = WeightedWheelTree(UP_CONFIG, allow_duplicate=True)
+		self.assertEqual(m.keys, ["角色A", "角色B", "角色A", "角色C", "角色D"])
+		self.assertEqual(m.weights, [35, 35, 3, 9, 18])
 		self.assertEqual(m.total, 100)
-		self.assertIsNone(m.paths)
+		self.assertEqual(m.paths[2], ("SSR", "非UP", "角色A"))
 		key, path = m.draw()
-		self.assertIsNone(path)
-		self.assertIn(key, m.keys)
+		self.assertEqual(path[-1], key)
 
 	def test_call_and_get(self):
-		m = WeightedWheelTree(UP_CONFIG)
+		m = WeightedWheelTree(UNIQUE_CONFIG)
 		self.assertIn(m(), m.keys)
 		self.assertIn(m.get(), m.keys)
 
 	def test_pick(self):
-		m = WeightedWheelTree(UP_CONFIG, pick=True, merge=True)
-		# 合并后不会取到重复 key;
+		m = WeightedWheelTree(UNIQUE_CONFIG, pick=True)
+		# 默认没有重复 key, 因此不会取到相同的 key;
 		for _ in range(200):
 			picked = m.pick(3)
 			self.assertEqual(len(picked), 3)
@@ -223,18 +243,23 @@ class TestWeightedWheelTree(unittest.TestCase):
 
 		# 未开启 pick 时不可用;
 		with self.assertRaises(ValueError):
-			WeightedWheelTree(UP_CONFIG).pick(2)
+			WeightedWheelTree(UNIQUE_CONFIG).pick(2)
 
-	def test_merge_requires_hashable(self):
-		m = WeightedWheelTree([(["unhashable"], 1, None)])
+	def test_unhashable_key_warns(self):
+		# 不可哈希时无法校验唯一性, 给出警告后放行;
+		with self.assertWarns(UserWarning):
+			m = WeightedWheelTree([(["unhashable"], 1, None)])
 		self.assertEqual(m.keys, [["unhashable"]])
-		self.assertIsNone(m.merged)
-		with self.assertRaises(TypeError):
-			WeightedWheelTree([(["unhashable"], 1, None)], merge=True)
+		self.assertEqual(m.weights, [1])
+		self.assertEqual(m.total, 1)
+
+		# 显式允许重复时不再校验, 也就不需要警告;
+		m = WeightedWheelTree([(["unhashable"], 1, None)], allow_duplicate=True)
+		self.assertEqual(m.keys, [["unhashable"]])
 
 	def test_sampling_matches_weights(self):
-		# 采样分布应与扁平权重一致(注意同 key 会在多个分支出现, 需要先合并);
-		m = WeightedWheelTree(UP_CONFIG)
+		# 采样分布应与扁平权重一致;
+		m = WeightedWheelTree(UNIQUE_CONFIG)
 		expect = flat_probs(m.keys, m.weights)
 		random.seed(42)
 		times = 50000

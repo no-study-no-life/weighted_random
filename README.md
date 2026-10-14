@@ -6,14 +6,21 @@
 
 一个简易的 Python 随机库: 根据给定的非负整数权重, 随机选择对应位置的元素. 
 
+尽量减少 `random` 的调用. 
+
 内部 **完全使用整数** 实现, 避免浮点数误差. 
 
 目前支持: 
 - 单次带权取样. 
-- 无重复多次带权取样.
+- 无重复多次带权/均匀取样.
 - 嵌套权重的一次性展开取样(如: 先选星级, 再选 UP/非UP, 最后选角色).
 
 ## 时空复杂度
+
+#### 无重复多次均匀取样(function: random_pick):
+
+单次调用时间复杂度 $\mathcal{O}(n)$ , 空间复杂度 $\mathcal{O}(n)$ .
+至多调用 `n` 次 `random_int`.
 
 #### 无需多次带权取样(初始化参数 `pick = False`):
 
@@ -35,6 +42,16 @@ from weighted_random import random_int
 
 result = random_int(10)  # 需要确保参数大于0.
 print(result)  # 随机输出 0 - 9的整数
+```
+
+#### 均匀随机取样
+```python
+from weighted_random import random_pick
+
+src = ["red", "orange", "yellow", "green"]
+n = 2
+result = random_pick(src, n)
+print(result)  # src 中任意 2 个元素的列表. 不检查 src 内是否有重复.
 ```
 
 #### 按单个权重抽取
@@ -89,18 +106,22 @@ from weighted_random import WeightedWheelTree
 config = [
 	("SSR", 1, [
 		("UP",   7, [("角色A", 1), ("角色B", 1)]),
-		("非UP", 3, [("角色A", 1), ("角色C", 3), ("角色D", 6)]),
+		("非UP", 3, [("角色C", 1), ("角色D", 3), ("角色E", 6)]),
 	]),
-	("SR", 9, [("角色E", 1), ("角色F", 1)]),
+	("SR", 9, [("角色F", 1), ("角色G", 1)]),
 ]
 
 m = WeightedWheelTree(config)
 result = m.get()      # 一次取样即可得到最终角色;
 key, path = m.draw()  # 同时拿到层级路径(如 ("SSR", "UP", "角色A")), 可判断是否歪了;
 
-print(m.total)   # 总权重;
-print(m.merged)  # 相同 key 的权重相加, 如 {"角色A": 38, ...}
+print(m.total)  # 总权重;
+print(m.paths)  # 与 keys 一一对应的层级路径;
 ```
+
+> 默认要求所有叶子 `key` **全局唯一**, 出现重复 `key` 会抛出 `ValueError`(信息中会列出
+> 该 key 及它出现的所有路径). 若同一个 `key` 确实需要出现在多个分支, 传 `allow_duplicate=True`,
+> 此时每个分支各保留一份, 权重各自独立. `key` 不可哈希时无法校验唯一性, 会给出 `UserWarning`.
 
 也可以只生成扁平的 `key` 列表与总权重列表, 自行取样:
 ```python
@@ -108,8 +129,8 @@ import bisect
 from weighted_random import flatten, random_int
 
 keys, weights = flatten(config)
-# 同一个 key 出现在多个分支时会重复出现, 权重各自独立;
-# 上例中 keys    = ["角色A", "角色B", "角色A", "角色C", "角色D", "角色E", "角色F"]
+# flatten 只做数学展开, 不校验唯一性: 同一个 key 出现在多个分支时会重复出现;
+# 上例中 keys    = ["角色A", "角色B", "角色C", "角色D", "角色E", "角色F", "角色G"]
 #       weights = [35, 35, 3, 9, 18, 450, 450], 总权重 1000;
 # 注意 SR 分支被通分放大: 450/1000 = (9/10) * (1/2), 正是它真实的概率.
 
